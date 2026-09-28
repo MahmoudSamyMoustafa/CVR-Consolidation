@@ -304,8 +304,8 @@ td.wrap{ white-space:normal; }
       </div>
       <h2>Drop your Cost (Saving/Overrun) report files here</h2>
       <p>or click to browse &mdash; upload as many project workbooks as you have for the month</p>
-      <div class="hint">Reads the <span class="mono">Current Cum</span> sheet in each .xlsx. Nothing leaves your browser &mdash; parsing happens locally.</div>
-      <input type="file" id="fileInput" accept=".xlsx" multiple hidden>
+      <div class="hint">Reads the <span class="mono">Current Cum</span> sheet in each Excel workbook (.xlsx, .xlsm, .xls, .xlsb). Nothing leaves your browser &mdash; parsing happens locally.</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xls,.xlsb" multiple hidden>
     </div>
 
     <div class="spec-grid">
@@ -325,6 +325,8 @@ td.wrap{ white-space:normal; }
         <p>Browse flagged items here, then download a workbook with Consolidated Data, Flagged Items, Project Summary, Flag Breakdown and category tabs.</p>
       </div>
     </div>
+
+    <div class="banner" id="uploadError" hidden role="alert"></div>
 
     <div id="fileListWrap" hidden>
       <div class="filelist" id="fileList"></div>
@@ -430,7 +432,10 @@ td.wrap{ white-space:normal; }
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"></script>
+<script src="xlsx.min.js"></script>
+<script>
+if (typeof XLSX === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js"><\/script>');
+</script>
 <script>
 (function(){
 "use strict";
@@ -1639,6 +1644,7 @@ function resetAll(){
   els.btnExport.hidden = true;
   els.btnReset.hidden = true;
   els.fileInput.value = '';
+  showUploadError('');
 }
 
 /* ---------- upload handling ---------- */
@@ -1649,8 +1655,17 @@ function fileRowHTML(name, status, note){
 }
 
 async function handleFiles(fileList){
-  const files = Array.from(fileList).filter(f=>/\.xlsx$/i.test(f.name));
-  if (!files.length) return;
+  const all = Array.from(fileList);
+  const files = all.filter(f=>/\.(xlsx|xlsm|xls|xlsb)$/i.test(f.name));
+  if (typeof XLSX === 'undefined'){
+    showUploadError('The Excel reader could not be loaded, so files cannot be read. Your network may be blocking cdn.jsdelivr.net. Place the file <span class="mono">xlsx.min.js</span> next to this page, or try a different network.');
+    return;
+  }
+  if (!files.length){
+    showUploadError('None of the selected files is an Excel workbook (.xlsx, .xlsm, .xls or .xlsb). Selected: ' + all.map(f=>esc(f.name)).join(', '));
+    return;
+  }
+  showUploadError('');
   ITEMS = []; TOTALS = {}; WARNINGS = []; PROJECT_ORDER = [];
   els.fileListWrap.hidden = false;
   els.fileList.innerHTML = files.map(f=>fileRowHTML(f.name,'pending')).join('');
@@ -1665,7 +1680,7 @@ async function handleFiles(fileList){
   }
 
   if (!ITEMS.length){
-    showToast('No pay-item rows were recognized in the uploaded file(s).');
+    showUploadError('<b>No pay-item rows were recognized.</b><ul>' + (WARNINGS.length ? WARNINGS.map(w=>`<li>${esc(w)}</li>`).join('') : '<li>The files were read, but the "Current Cum" sheet did not follow the expected layout (title in row 1, pay items from row 5, PV/EV/AC totals in columns J, P and V).</li>') + '</ul>');
     return;
   }
 
@@ -1676,11 +1691,17 @@ async function handleFiles(fileList){
   renderAllPanels();
   switchTab('overview');
 }
+function showUploadError(html){
+  const el = document.getElementById('uploadError');
+  if (!html){ el.hidden = true; el.innerHTML = ''; return; }
+  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><div>${html}</div>`;
+  el.hidden = false;
+}
 function cssEsc(s){ return s.replace(/["\\]/g, '\\$&'); }
 
 els.dropzone.addEventListener('click', ()=> els.fileInput.click());
 els.dropzone.addEventListener('keydown', e=>{ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); els.fileInput.click(); } });
-els.fileInput.addEventListener('change', e=> handleFiles(e.target.files));
+els.fileInput.addEventListener('change', e=>{ handleFiles(e.target.files).finally(()=>{ e.target.value=''; }); });
 ['dragenter','dragover'].forEach(ev=> els.dropzone.addEventListener(ev, e=>{ e.preventDefault(); els.dropzone.classList.add('drag'); }));
 ['dragleave','drop'].forEach(ev=> els.dropzone.addEventListener(ev, e=>{ e.preventDefault(); els.dropzone.classList.remove('drag'); }));
 els.dropzone.addEventListener('drop', e=>{ if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files); });
