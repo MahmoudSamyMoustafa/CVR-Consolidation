@@ -73,7 +73,10 @@ body{
   margin:0; background:var(--bg); color:var(--ink);
   font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   padding-inline:0;
+  min-height:100vh; min-height:100dvh; display:flex; flex-direction:column;
 }
+body > .wrap{ flex:1 0 auto; width:100%; }
+.topbar, .site-footer{ flex:none; }
 .mono{ font-family:"IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-variant-numeric: tabular-nums; }
 h1,h2,h3{ font-weight:600; text-wrap:balance; margin:0; }
 button{ font-family:inherit; }
@@ -253,6 +256,20 @@ td.wrap{ white-space:normal; }
 
 .footnote{ font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6; }
 
+/* ---------- Footer ---------- */
+.site-footer{ padding-block:0 24px; padding-bottom:calc(24px + env(safe-area-inset-bottom,0px)); }
+.credit-card{
+  display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:6px 14px;
+  background:var(--surface); border:1px solid var(--border); border-radius:4px;
+  padding:14px 20px; text-align:center;
+}
+.credit-label{ font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.credit-name{ font-size:15px; font-weight:600; color:var(--ink); }
+.credit-divider{ width:1px; height:22px; background:var(--border); }
+.credit-email{ font-size:13px; color:var(--accent); text-decoration:none; border-bottom:1px solid color-mix(in srgb, var(--accent) 45%, transparent); padding-bottom:1px; }
+.credit-email:hover{ border-bottom-color:var(--accent); }
+@media (max-width:480px){ .credit-divider{ display:none; } .credit-email{ flex-basis:100%; border-bottom:none; text-decoration:underline; } }
+
 .toast{
   position:fixed; bottom:calc(20px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%);
   background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:8px; font-size:13px;
@@ -429,6 +446,17 @@ td.wrap{ white-space:normal; }
 
 </main>
 </div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="credit-card">
+      <span class="credit-label">Developed by</span>
+      <span class="credit-name">Mahmoud El-Shobary</span>
+      <span class="credit-divider" aria-hidden="true"></span>
+      <a class="credit-email" href="mailto:mahmoud_elshobary@outlook.com">mahmoud_elshobary@outlook.com</a>
+    </div>
+  </div>
+</footer>
 
 <div class="toast" id="toast"></div>
 
