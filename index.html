@@ -1,7 +1,7 @@
 <title>Cost Overrun Consolidator</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
+  --app-font:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
   --bg:#eef1ef;
   --surface:#ffffff;
   --surface-2:#f4f6f5;
@@ -71,15 +71,15 @@
 [hidden]{ display:none !important; }
 body{
   margin:0; background:var(--bg); color:var(--ink);
-  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-family:var(--app-font);
   padding-inline:0;
   min-height:100vh; min-height:100dvh; display:flex; flex-direction:column;
 }
 body > .wrap{ flex:1 0 auto; width:100%; }
 .topbar, .site-footer{ flex:none; }
-.mono{ font-family:"IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace; font-variant-numeric: tabular-nums; }
+.mono{ font-family:var(--app-font); font-variant-numeric: tabular-nums lining-nums; }
 h1,h2,h3{ font-weight:600; text-wrap:balance; margin:0; }
-button{ font-family:inherit; }
+button, input, select, textarea{ font-family:inherit; }
 a{ color:var(--accent); }
 
 .wrap{ max-width:1280px; margin:0 auto; padding-inline:20px; }
@@ -98,7 +98,7 @@ a{ color:var(--accent); }
   width:34px; height:34px; border-radius:8px; flex:none;
   background: linear-gradient(155deg, var(--accent), #0e4a51);
   display:flex; align-items:center; justify-content:center;
-  color:#fff; font-family:"IBM Plex Mono"; font-weight:600; font-size:13px;
+  color:#fff; font-family:var(--app-font); font-weight:600; font-size:13px;
 }
 .brand-logo{
   width:56px; height:56px; flex:none; border-radius:10px; background:#ffffff;
@@ -152,7 +152,7 @@ main{ padding-block:22px 60px; }
   background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px;
 }
 .spec-card .k{
-  font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent);
+  font-family:var(--app-font); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--accent);
 }
 .spec-card h3{ font-size:14.5px; margin-block:6px 6px; }
 .spec-card p{ margin:0; font-size:13px; color:var(--muted); line-height:1.5; }
@@ -175,7 +175,7 @@ main{ padding-block:22px 60px; }
   padding:14px 16px; display:flex; flex-direction:column; gap:4px;
 }
 .stat .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
-.stat .value{ font-family:"IBM Plex Mono"; font-size:22px; font-weight:600; }
+.stat .value{ font-family:var(--app-font); font-size:22px; font-weight:600; }
 .stat .sub{ font-size:12px; color:var(--muted); }
 .stat.accent{ border-color:var(--accent); background:var(--accent-soft); }
 .stat.accent .value{ color:var(--accent); }
@@ -199,7 +199,7 @@ main{ padding-block:22px 60px; }
 }
 .tab.active{ color:var(--accent); border-bottom-color:var(--accent); }
 .tab:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
-.tab .count{ font-family:"IBM Plex Mono"; font-size:11px; margin-left:5px; opacity:.75; }
+.tab .count{ font-family:var(--app-font); font-size:11px; margin-left:5px; opacity:.75; }
 
 .panel{ display:none; }
 .panel.active{ display:block; }
@@ -232,7 +232,7 @@ thead th.sorted .arrow{ opacity:1; color:var(--accent); }
 tbody td{ padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
 tbody tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background:var(--surface-2); }
-td.num, th.num{ text-align:right; font-family:"IBM Plex Mono"; font-variant-numeric:tabular-nums; }
+td.num, th.num{ text-align:right; font-family:var(--app-font); font-variant-numeric:tabular-nums lining-nums; }
 td.desc{ max-width:340px; white-space:normal; line-height:1.4; }
 td.wrap{ white-space:normal; }
 .proj-name{ color:var(--muted); font-size:11.5px; display:block; max-width:220px; white-space:normal; }
@@ -259,7 +259,7 @@ td.wrap{ white-space:normal; }
 .loaded-files{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-block:0 14px; font-size:12px; color:var(--muted); }
 .loaded-files .lf-label{ text-transform:uppercase; letter-spacing:.06em; font-size:11px; margin-right:2px; }
 .loaded-files .chip{ background:var(--surface); border:1px solid var(--border); border-radius:99px; padding:3px 10px; color:var(--ink); max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.loaded-files .chip b{ color:var(--accent); font-family:"IBM Plex Mono"; font-weight:600; margin-right:5px; }
+.loaded-files .chip b{ color:var(--accent); font-family:var(--app-font); font-weight:600; margin-right:5px; }
 .dropping-results main{ outline:2px dashed var(--accent); outline-offset:-6px; border-radius:14px; }
 
 
