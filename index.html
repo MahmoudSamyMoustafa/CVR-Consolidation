@@ -255,6 +255,13 @@ td.wrap{ white-space:normal; }
 
 .footnote{ font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6; }
 
+/* ---------- Loaded files strip ---------- */
+.loaded-files{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-block:0 14px; font-size:12px; color:var(--muted); }
+.loaded-files .lf-label{ text-transform:uppercase; letter-spacing:.06em; font-size:11px; margin-right:2px; }
+.loaded-files .chip{ background:var(--surface); border:1px solid var(--border); border-radius:99px; padding:3px 10px; color:var(--ink); max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.loaded-files .chip b{ color:var(--accent); font-family:"IBM Plex Mono"; font-weight:600; margin-right:5px; }
+.dropping-results main{ outline:2px dashed var(--accent); outline-offset:-6px; border-radius:14px; }
+
 /* ---------- Footer ---------- */
 .site-footer{ padding-block:0 24px; padding-bottom:calc(24px + env(safe-area-inset-bottom,0px)); }
 .credit-card{
@@ -299,7 +306,16 @@ td.wrap{ white-space:normal; }
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
         <span class="theme-label">Dark</span>
       </button>
-      <button class="btn ghost" id="btnReset" hidden>Upload different files</button>
+      <button class="btn" id="btnAdd" type="button" hidden title="Add more project files to the ones already loaded">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Add files
+      </button>
+      <button class="btn ghost" id="btnReplace" type="button" hidden title="Clear everything loaded and start again with new files">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/></svg>
+        Replace all
+      </button>
+      <input type="file" id="addInput" accept=".xlsx,.xlsm,.xls,.xlsb" multiple hidden>
+      <input type="file" id="replaceInput" accept=".xlsx,.xlsm,.xls,.xlsb" multiple hidden>
       <button class="btn primary" id="btnExport" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
         Download Excel report
@@ -351,6 +367,8 @@ td.wrap{ white-space:normal; }
   <!-- ============ RESULTS STATE ============ -->
   <div id="results" hidden>
 
+    <div class="banner" id="resultsError" hidden role="alert"></div>
+    <div class="loaded-files" id="loadedFiles"></div>
     <div class="stats" id="statTiles"></div>
     <div id="warningBanner"></div>
 
@@ -565,7 +583,8 @@ function firstTextCell(row){
   return null;
 }
 
-async function processFile(file){
+async function processFile(file, ctx){
+  ctx = ctx || {batchCodes:new Set(), replaced:[], itemCount:0};
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, {type:'array'});
   const sheetName = findCurrentCumSheet(wb);
@@ -590,11 +609,18 @@ async function processFile(file){
     projectCode = 'FILE:' + file.name;
     WARNINGS.push(`"${file.name}": could not read a project code from the title cell \u2014 grouped under its filename instead.`);
   }
-  if (TOTALS[projectCode]){
+  if (TOTALS[projectCode] && !ctx.batchCodes.has(projectCode)){
+    // Same project was loaded in an earlier upload: the new file replaces it.
+    const oldFile = TOTALS[projectCode].sourceFile;
+    ITEMS = ITEMS.filter(it => it.projectCode !== projectCode);
+    WARNINGS = WARNINGS.filter(w => !w.includes(`"${oldFile}"`) && !w.includes(`Project ${projectCode} `));
+    delete TOTALS[projectCode];
+    ctx.replaced.push({code:projectCode, oldFile, newFile:file.name});
+  } else if (TOTALS[projectCode]){
     WARNINGS.push(`Project ${projectCode} appears in more than one uploaded file ("${TOTALS[projectCode].sourceFile}" and "${file.name}") \u2014 later file's items were still added; check for a duplicate upload.`);
-  } else {
-    PROJECT_ORDER.push(projectCode);
   }
+  if (!PROJECT_ORDER.includes(projectCode)) PROJECT_ORDER.push(projectCode);
+  ctx.batchCodes.add(projectCode);
   TOTALS[projectCode] = TOTALS[projectCode] || { projectCode, projectName, asOf, sourceFile:file.name, pv:0, ev:0, ac:0, found:false };
 
   let section = null, sectionType = 'Other';
@@ -648,6 +674,7 @@ async function processFile(file){
     });
     itemsInFile++;
   }
+  ctx.itemCount += itemsInFile;
   if (itemsInFile===0){
     WARNINGS.push(`"${file.name}": no pay-item rows recognized in "Current Cum" \u2014 check the file follows the standard template.`);
   }
@@ -706,7 +733,7 @@ const els = {};
  'summaryTable','flaggedTable','flaggedFlagFilter','flaggedProjectFilter','flaggedSearch',
  'breakdownTable','breakdownMatrix','categoryTable','categoryMatrix','allTable','allProjectFilter','allFlagFilter','allSearch',
  'flagCatSummary','flagCatTable','flagCatCategoryFilter','flagCatFlagFilter','flagCatProjectFilter','flagCatSearch','tabCountFlagCat',
- 'btnExport','btnReset','dropzone','fileInput','tabCountFlagged','tabCountAll','toast'
+ 'btnExport','btnAdd','btnReplace','addInput','replaceInput','resultsError','loadedFiles','dropzone','fileInput','tabCountFlagged','tabCountAll','toast'
 ].forEach(id => els[id] = document.getElementById(id));
 
 function showToast(msg){
@@ -1602,6 +1629,7 @@ async function exportWorkbook(){
 /* ======================= UI wiring ======================= */
 function renderAllPanels(){
   populateFilterSelects();
+  renderLoadedFiles();
   renderStats();
   renderWarnings();
   renderLegend();
@@ -1660,18 +1688,22 @@ els.flagCatSearch.addEventListener('input', debounce(renderFlagCat, 120));
 function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
 els.btnExport.addEventListener('click', exportWorkbook);
-els.btnReset.addEventListener('click', resetAll);
+els.btnAdd.addEventListener('click', ()=> els.addInput.click());
+els.btnReplace.addEventListener('click', ()=> els.replaceInput.click());
+els.addInput.addEventListener('change', e=>{ handleFiles(e.target.files, 'add').finally(()=>{ e.target.value=''; }); });
+els.replaceInput.addEventListener('change', e=>{ handleFiles(e.target.files, 'replace').finally(()=>{ e.target.value=''; }); });
 
-function resetAll(){
-  ITEMS = []; TOTALS = {}; WARNINGS = []; PROJECT_ORDER = [];
-  els.fileList.innerHTML = ''; els.fileListWrap.hidden = true;
-  els.uploadShell.hidden = false;
-  els.results.hidden = true;
-  els.btnExport.hidden = true;
-  els.btnReset.hidden = true;
-  els.fileInput.value = '';
-  showUploadError('');
-}
+// dropping files anywhere on the results screen adds them
+['dragenter','dragover'].forEach(ev=> document.addEventListener(ev, e=>{
+  if (els.results.hidden || !e.dataTransfer || !Array.from(e.dataTransfer.types||[]).includes('Files')) return;
+  e.preventDefault(); document.body.classList.add('dropping-results');
+}));
+['dragleave','drop'].forEach(ev=> document.addEventListener(ev, e=>{
+  if (els.results.hidden) return;
+  if (ev==='dragleave' && e.relatedTarget) return;
+  document.body.classList.remove('dropping-results');
+  if (ev==='drop'){ e.preventDefault(); if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files, 'add'); }
+}));
 
 /* ---------- upload handling ---------- */
 function fileRowHTML(name, status, note){
@@ -1680,42 +1712,89 @@ function fileRowHTML(name, status, note){
   return `<div class="filerow" data-name="${esc(name)}"><span class="name">${esc(name)}</span><span class="status ${cls}">${label}</span></div>`;
 }
 
-async function handleFiles(fileList){
-  const all = Array.from(fileList);
+/* mode: 'new' (first upload from the upload screen), 'add' (keep loaded projects), 'replace' (start over) */
+async function handleFiles(fileList, mode){
+  mode = mode || 'new';
+  const onResults = mode!=='new';
+  const showErr = onResults ? showResultsError : showUploadError;
+  const all = Array.from(fileList||[]);
+  if (!all.length) return;
   const files = all.filter(f=>/\.(xlsx|xlsm|xls|xlsb)$/i.test(f.name));
   if (typeof XLSX === 'undefined'){
-    showUploadError('The Excel reader could not be loaded, so files cannot be read. Your network may be blocking cdn.jsdelivr.net. Place the file <span class="mono">xlsx.min.js</span> next to this page, or try a different network.');
+    showErr('The Excel reader could not be loaded, so files cannot be read. Your network may be blocking cdn.jsdelivr.net. Place the file <span class="mono">xlsx.min.js</span> next to this page, or try a different network.');
     return;
   }
   if (!files.length){
-    showUploadError('None of the selected files is an Excel workbook (.xlsx, .xlsm, .xls or .xlsb). Selected: ' + all.map(f=>esc(f.name)).join(', '));
+    showErr('None of the selected files is an Excel workbook (.xlsx, .xlsm, .xls or .xlsb). Selected: ' + all.map(f=>esc(f.name)).join(', '));
     return;
   }
-  showUploadError('');
-  ITEMS = []; TOTALS = {}; WARNINGS = []; PROJECT_ORDER = [];
-  els.fileListWrap.hidden = false;
-  els.fileList.innerHTML = files.map(f=>fileRowHTML(f.name,'pending')).join('');
+  showErr('');
 
+  // keep a copy so a failed add/replace leaves the current results untouched
+  const snapshot = { ITEMS:ITEMS.slice(), TOTALS:JSON.parse(JSON.stringify(TOTALS)), WARNINGS:WARNINGS.slice(), PROJECT_ORDER:PROJECT_ORDER.slice() };
+  if (mode!=='add'){ ITEMS = []; TOTALS = {}; WARNINGS = []; PROJECT_ORDER = []; }
+  const ctx = {batchCodes:new Set(), replaced:[], itemCount:0};
+
+  if (!onResults){
+    els.fileListWrap.hidden = false;
+    els.fileList.innerHTML = files.map(f=>fileRowHTML(f.name,'pending')).join('');
+  } else {
+    showToast(`Reading ${files.length} file${files.length>1?'s':''}\u2026`);
+  }
+  const batchWarnings = [];
   for (const file of files){
     const before = WARNINGS.length;
-    try { await processFile(file); }
+    try { await processFile(file, ctx); }
     catch(err){ console.error(err); WARNINGS.push(`"${file.name}": could not be read (${err && err.message ? err.message : 'unknown error'}).`); }
-    const row = els.fileList.querySelector(`[data-name="${cssEsc(file.name)}"]`);
     const hadNewWarning = WARNINGS.length > before;
-    if (row) row.outerHTML = fileRowHTML(file.name, hadNewWarning?'warn':'ok');
+    if (hadNewWarning) batchWarnings.push(...WARNINGS.slice(before));
+    if (!onResults){
+      const row = els.fileList.querySelector(`[data-name="${cssEsc(file.name)}"]`);
+      if (row) row.outerHTML = fileRowHTML(file.name, hadNewWarning?'warn':'ok');
+    }
   }
 
-  if (!ITEMS.length){
-    showUploadError('<b>No pay-item rows were recognized.</b><ul>' + (WARNINGS.length ? WARNINGS.map(w=>`<li>${esc(w)}</li>`).join('') : '<li>The files were read, but the "Current Cum" sheet did not follow the expected layout (title in row 1, pay items from row 5, PV/EV/AC totals in columns J, P and V).</li>') + '</ul>');
+  if (ctx.itemCount===0){
+    const detail = '<ul>' + (batchWarnings.length ? batchWarnings.map(w=>`<li>${esc(w)}</li>`).join('') : '<li>The files were read, but the "Current Cum" sheet did not follow the expected layout (title in row 1, pay items from row 5, PV/EV/AC totals in columns J, P and V).</li>') + '</ul>';
+    if (onResults){
+      ITEMS = snapshot.ITEMS; TOTALS = snapshot.TOTALS; WARNINGS = snapshot.WARNINGS; PROJECT_ORDER = snapshot.PROJECT_ORDER;
+      showErr(`<b>No pay-item rows were recognized in the new file${files.length>1?'s':''}, so nothing was ${mode==='add'?'added':'replaced'}. The results below are unchanged.</b>` + detail);
+    } else {
+      showErr('<b>No pay-item rows were recognized.</b>' + detail);
+    }
     return;
   }
 
   els.uploadShell.hidden = true;
   els.results.hidden = false;
   els.btnExport.hidden = false;
-  els.btnReset.hidden = false;
+  els.btnAdd.hidden = false;
+  els.btnReplace.hidden = false;
+  const keepTab = onResults ? (document.querySelector('.tab.active')||{}).dataset?.tab : null;
   renderAllPanels();
-  switchTab('overview');
+  switchTab(keepTab || 'overview');
+
+  if (mode==='add'){
+    const newCount = ctx.batchCodes.size - ctx.replaced.length;
+    const parts = [];
+    if (newCount) parts.push(`${newCount} project${newCount>1?'s':''} added`);
+    if (ctx.replaced.length) parts.push(`${ctx.replaced.length} updated (${ctx.replaced.map(r=>r.code).join(', ')})`);
+    showToast(parts.join(' \u00b7 ') || 'Files added.');
+  } else if (mode==='replace'){
+    showToast(`Replaced with ${PROJECT_ORDER.length} project${PROJECT_ORDER.length>1?'s':''}.`);
+  }
+}
+function showResultsError(html){
+  const el = els.resultsError;
+  if (!html){ el.hidden = true; el.innerHTML = ''; return; }
+  el.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><div>${html}</div>`;
+  el.hidden = false;
+}
+function renderLoadedFiles(){
+  els.loadedFiles.innerHTML = '<span class="lf-label">Loaded:</span>' + PROJECT_ORDER.map(c=>{
+    const t = TOTALS[c];
+    return `<span class="chip" title="${esc(t.sourceFile)}"><b>${esc(c)}</b>${esc(t.sourceFile)}</span>`;
+  }).join('');
 }
 function showUploadError(html){
   const el = document.getElementById('uploadError');
